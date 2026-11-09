@@ -46,6 +46,7 @@
             padding: 0;
             display: flex;
             align-items: center;
+            user-select: none;
         }
 
         .header-text h1 {
@@ -225,6 +226,7 @@
             align-items: center;
             justify-content: center;
             user-select: none;
+            cursor: pointer;
         }
 
         .portion-display {
@@ -235,7 +237,7 @@
             text-align: center;
         }
 
-        section h2 {
+        h2 {
             font-size: 15px;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -261,6 +263,7 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             margin-bottom: 6px;
+            cursor: pointer;
         }
 
         .item-row input[type="checkbox"] {
@@ -268,6 +271,7 @@
             width: 18px;
             height: 18px;
             accent-color: var(--accent-orange);
+            cursor: pointer;
         }
 
         .item-text {
@@ -288,6 +292,7 @@
             margin-bottom: 10px;
             display: flex;
             gap: 12px;
+            cursor: pointer;
         }
 
         .step-card.completed {
@@ -339,6 +344,7 @@
 </head>
 <body>
 
+    <!-- Main Dynamic Toolbar Header -->
     <div id="app-header">
         <button class="menu-btn" onclick="toggleDrawer()">☰</button>
         <div class="header-text">
@@ -347,8 +353,10 @@
         </div>
     </div>
 
+    <!-- Dropdown Overlay Background -->
     <div id="drawer-overlay" onclick="toggleDrawer()"></div>
 
+    <!-- Navigation Menu Index Drawer -->
     <div id="nav-drawer">
         <div class="drawer-header">
             <h2>Recipe Index</h2>
@@ -366,11 +374,7 @@
         </div>
     </div>
 
+    <!-- Primary Display Container Layout -->
     <div id="main-content">
 
-        <!-- ================= CHILI VIEW ================= -->
-        <div id="recipe-chili" class="recipe-view active">
-            <div class="recipe-banner">
-                <h1 class="recipe-title">Thick Laphroaig Bison & Brisket Chili</h1>
-                <div class="tags">
-                    <span class="tag">Simple Truth Bison</span>
+        <!-- ================= RECIPE 1: CHILI INTERFACE ================= -->
