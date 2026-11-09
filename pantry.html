@@ -340,6 +340,7 @@
             align-items: center;
             transition: all 0.2s ease;
             position: relative;
+            min-width: 0; /* keeps long product names from pushing the card wider than the screen */
         }
 
         .pantry-card:hover {
@@ -377,9 +378,13 @@
             font-weight: 700;
             color: #ffffff;
             margin: 0 0 2px 0;
-            white-space: nowrap;
+            line-height: 1.3;
+            /* show up to two lines so the size isn't cut off */
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
             overflow: hidden;
-            text-overflow: ellipsis;
+            overflow-wrap: anywhere;
         }
 
         .pantry-brand {
@@ -441,6 +446,7 @@
             display: flex;
             gap: 4px;
             margin-left: auto;
+            flex-shrink: 0;
         }
 
         .icon-action-btn {
@@ -744,7 +750,12 @@
         /* Replaces the two Tailwind classes this page used */
         .hide-mobile { display: none; }
         @media (min-width: 640px) { .hide-mobile { display: inline; } }
-        .pantry-img img { width: 100%; height: 100%; object-fit: cover; }
+        .pantry-img { overflow: hidden; }
+        .pantry-img img { width: 100%; height: 100%; object-fit: contain; background: #ffffff; padding: 3px; }
+        #toast-action {
+            background: var(--accent-orange); color: #fff; border: none; border-radius: 12px;
+            padding: 4px 12px; font-weight: 800; font-size: 12.5px; cursor: pointer; margin-left: 4px;
+        }
         a.action-icon-btn { text-decoration: none; }
 
         .source-tag {
@@ -815,7 +826,7 @@
         <!-- 1. PANTRY INVENTORY VIEW -->
         <div id="pantry-view" class="app-view active">
             <div class="hero-banner">
-                <h2 class="hero-title">Pantry Inventory</h2>
+                <h2 class="hero-title">Pantry</h2>
                 <p class="hero-subtitle">Keep track of items in your kitchen. Scan barcodes to restock or consume, and quickly flag items that need reordering.</p>
             </div>
 
@@ -978,6 +989,7 @@
     <div id="toast">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
         <span id="toast-message">Notification message</span>
+        <button id="toast-action" type="button" style="display:none;"></button>
     </div>
 
     <footer>
@@ -1074,6 +1086,14 @@
                 pantryItems = [...INITIAL_PANTRY];
             }
 
+            // Anything already at 0 gets removed (used-up items no longer stay in the pantry)
+            const usedUp = pantryItems.filter(i => !(Number(i.qty) > 0));
+            if (usedUp.length) {
+                usedUp.forEach(i => { if (typeof rememberProduct === 'function') rememberProduct(i); });
+                pantryItems = pantryItems.filter(i => Number(i.qty) > 0);
+                savePantryData();
+            }
+
             // Shared shopping list (same key the cookbook and hub use)
             shoppingList = VanFam.loadList();
         }
@@ -1148,15 +1168,16 @@
             filtered.forEach(item => {
                 const isLow = item.qty <= 1;
                 const imgDisplay = item.imgUrl ?
-                    `<img src="${esc(item.imgUrl)}" onerror="this.outerHTML='<span>${item.img || getCategoryEmoji(item.category)}</span>'">` :
+                    `<img src="${esc(item.imgUrl)}" alt="" onerror="nextProductImage(this, '${item.id}')">` :
                     `<span>${item.img || getCategoryEmoji(item.category)}</span>`;
+                const subLine = [item.brand, item.size].filter(Boolean).join(' · ') || item.category;
 
                 html += `
                     <div class="pantry-card ${isLow ? 'low-stock' : ''}">
                         <div class="pantry-img">${imgDisplay}</div>
                         <div class="pantry-info">
                             <h3 class="pantry-title">${esc(item.name)}</h3>
-                            <p class="pantry-brand">${esc(item.brand || item.category)}</p>
+                            <p class="pantry-brand">${esc(subLine)}</p>
                             <div class="pantry-meta">
                                 <div class="qty-control">
                                     <button class="qty-btn" onclick="adjustPantryQty('${item.id}', -1)">&minus;</button>
@@ -1199,13 +1220,20 @@
             const item = pantryItems.find(i => i.id === id);
             if (!item) return;
 
-            item.qty = Math.max(0, item.qty + delta);
+            if (delta < 0) { useOne(item); return; }
+            item.qty += delta;
             savePantryData();
             renderPantryView();
+        }
 
-            if (item.qty === 0) {
-                showToast(`"${item.name}" is out of stock!`);
-            }
+        // If a product photo won't load, try the next one, then fall back to the emoji
+        function nextProductImage(imgEl, id) {
+            const item = pantryItems.find(i => i.id === id);
+            const list = (item && item.images) || [];
+            const tried = Number(imgEl.dataset.tried || 0) + 1;
+            const next = list.filter(src => src !== item.imgUrl)[tried - 1];
+            if (next) { imgEl.dataset.tried = tried; imgEl.src = next; return; }
+            imgEl.outerHTML = `<span>${(item && item.img) || getCategoryEmoji(item ? item.category : '')}</span>`;
         }
 
         function deletePantryItem(id) {
@@ -1484,73 +1512,144 @@
             }, 2500);
         }
 
-        function processUPCBarcode(barcode) {
-            // Check if item already exists in local Pantry Inventory first
+        /*
+         * Product memory: remembers what each barcode is (including your edits),
+         * so a product you used up and re-buy comes back with the same name and photo.
+         */
+        const PRODUCT_MEMORY_KEY = 'vanfam_product_memory';
+        function rememberProduct(item) {
+            if (!item.upc) return;
+            const mem = VanFam.store.getJSON(PRODUCT_MEMORY_KEY, {}) || {};
+            mem[item.upc] = {
+                name: item.name, brand: item.brand || '', size: item.size || '',
+                category: item.category, imgUrl: item.imgUrl || '', images: item.images || [], img: item.img || ''
+            };
+            VanFam.store.setJSON(PRODUCT_MEMORY_KEY, mem);
+        }
+        function recallProduct(upc) {
+            const mem = VanFam.store.getJSON(PRODUCT_MEMORY_KEY, {}) || {};
+            return mem[upc] || null;
+        }
+
+        // Looks up a barcode: product memory first, then the /api/upc Netlify function,
+        // then Open Food Facts directly if the function isn't available.
+        async function lookupProduct(barcode) {
+            const known = recallProduct(barcode);
+            if (known) return { ...known, upc: barcode };
+
+            let info = null;
+            try {
+                const res = await fetch(`/api/upc?code=${encodeURIComponent(barcode)}`);
+                if (res.ok && (res.headers.get('content-type') || '').includes('json')) {
+                    const data = await res.json();
+                    if (data.found) info = data;
+                    else if (data.found === false) return null;
+                }
+            } catch (e) {}
+
+            if (!info) {
+                try {
+                    const res = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+                    const data = await res.json();
+                    if (data && data.status === 1 && data.product) {
+                        const p = data.product;
+                        const brand = (p.brands || '').split(',')[0].trim();
+                        const size = (p.quantity || '').replace(/\s*\(.*?\)\s*/g, ' ').trim();
+                        let name = p.product_name_en || p.product_name || 'Scanned Item';
+                        if (name === name.toLowerCase()) name = name.replace(/\b([a-z])/g, (m, c) => c.toUpperCase()).replace(/'S\b/g, "'s");
+                        if (brand && !name.toLowerCase().includes(brand.toLowerCase())) name = `${brand} ${name}`;
+                        if (size) name = `${name}, ${size}`;
+                        info = { name, brand, size, category: 'Pantry & Cans', images: [p.image_front_url || p.image_url].filter(Boolean) };
+                    }
+                } catch (e) {}
+            }
+            if (!info) return null;
+
+            return {
+                upc: barcode,
+                name: info.name,
+                brand: info.brand || '',
+                size: info.size || '',
+                category: info.category || 'Pantry & Cans',
+                images: info.images || [],
+                imgUrl: (info.images || [])[0] || ''
+            };
+        }
+
+        async function processUPCBarcode(barcode) {
             const existing = pantryItems.find(p => p.upc === barcode);
 
-            if (existing) {
-                handleScanModeAction(existing, barcode);
-            } else {
-                // Fetch product metadata from Open Food Facts API
-                fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`)
-                    .then(res => res.json())
-                    .then(data => {
-                        let name = 'Scanned Grocery Item';
-                        let brand = 'Unknown Brand';
-                        let imgUrl = '';
-                        let category = 'Pantry & Cans';
+            if (currentScanMode === 'IN') {
+                if (existing) {
+                    existing.qty += 1;
+                    savePantryData(); renderPantryView();
+                    showToast(`+1 ${existing.name} (now ${existing.qty})`);
+                    return;
+                }
+                const info = await lookupProduct(barcode);
+                const newItem = {
+                    id: VanFam.uid('p'),
+                    name: info ? info.name : `Product ${barcode}`,
+                    brand: info ? info.brand : '',
+                    size: info ? info.size : '',
+                    category: info ? info.category : 'Pantry & Cans',
+                    qty: 1,
+                    upc: barcode,
+                    imgUrl: info ? info.imgUrl : '',
+                    images: info ? info.images : [],
+                    img: info && info.img ? info.img : ''
+                };
+                pantryItems.push(newItem);
+                rememberProduct(newItem);
+                savePantryData(); renderPantryView();
+                if (info) showToast(`Added ${newItem.name}`);
+                else showToast('Not found in the product database. Tap edit to name it.', 'Edit', () => openEditModal(newItem.id));
+                return;
+            }
 
-                        if (data && data.status === 1 && data.product) {
-                            const p = data.product;
-                            name = p.product_name || p.product_name_en || name;
-                            brand = p.brands || brand;
-                            imgUrl = p.image_front_thumb_url || p.image_url || '';
-                        }
+            if (currentScanMode === 'OUT') {
+                if (existing) {
+                    useOne(existing);
+                } else {
+                    const known = recallProduct(barcode);
+                    showToast(`${known ? known.name : 'That item'} isn't in the pantry`);
+                }
+                return;
+            }
 
-                        const newItem = {
-                            id: VanFam.uid('p'),
-                            name: name,
-                            brand: brand,
-                            category: category,
-                            qty: 0,
-                            upc: barcode,
-                            imgUrl: imgUrl
-                        };
-
-                        pantryItems.push(newItem);
-                        handleScanModeAction(newItem, barcode);
-                    })
-                    .catch(() => {
-                        // Fallback manual prompt if offline or API fails
-                        const fallbackItem = {
-                            id: VanFam.uid('p'),
-                            name: `Product (${barcode})`,
-                            brand: 'Scanned Item',
-                            category: 'Pantry & Cans',
-                            qty: 0,
-                            upc: barcode
-                        };
-                        pantryItems.push(fallbackItem);
-                        handleScanModeAction(fallbackItem, barcode);
-                    });
+            if (currentScanMode === 'LOW') {
+                if (existing) { flagLowAndAddToList(existing.id); return; }
+                // Not in the pantry: just put it on the shopping list
+                const info = await lookupProduct(barcode);
+                const name = info ? info.name : `Product ${barcode}`;
+                const result = VanFam.addToList({ name, amount: 1, unit: '', source: 'Running Low', sourceId: `upc:${barcode}`, upc: barcode }, shoppingList);
+                if (result !== 'exists') { saveShoppingData(); renderShoppingView(); }
+                showToast(result === 'exists' ? `${name} is already on the list` : `Added ${name} to the list`);
             }
         }
 
-        function handleScanModeAction(item, barcode) {
-            if (currentScanMode === 'IN') {
-                item.qty += 1;
-                savePantryData();
-                renderPantryView();
-                showToast(`[+ IN] Restocked: ${item.name} (Qty: ${item.qty})`);
-            } else if (currentScanMode === 'OUT') {
-                item.qty = Math.max(0, item.qty - 1);
-                savePantryData();
-                renderPantryView();
-                showToast(`[- OUT] Consumed: ${item.name} (Qty: ${item.qty})`);
-            } else if (currentScanMode === 'LOW') {
-                savePantryData();
-                flagLowAndAddToList(item.id);
+        // Takes one off the count; when the last one is used, removes it (with Undo)
+        function useOne(item) {
+            if (item.qty > 1) {
+                item.qty -= 1;
+                savePantryData(); renderPantryView();
+                showToast(`-1 ${item.name} (${item.qty} left)`);
+                return;
             }
+            removeWithUndo(item, `Used the last ${item.name}. Removed from pantry.`);
+        }
+
+        function removeWithUndo(item, message) {
+            const index = pantryItems.indexOf(item);
+            const snapshot = { ...item };
+            rememberProduct(item);
+            pantryItems = pantryItems.filter(i => i !== item);
+            savePantryData(); renderPantryView();
+            showToast(message, 'Undo', () => {
+                snapshot.qty = Math.max(1, snapshot.qty);
+                pantryItems.splice(Math.min(index, pantryItems.length), 0, snapshot);
+                savePantryData(); renderPantryView();
+            });
         }
 
         function promptManualBarcode() {
@@ -1610,6 +1709,9 @@
                     const categoryChanged = item.category !== category;
                     Object.assign(item, { name, brand, category, qty, upc });
                     if (categoryChanged && !item.imgUrl) item.img = getCategoryEmoji(category);
+                    rememberProduct(item); // so your edits come back if you re-scan it later
+                    closeManualModal();
+                    if (qty === 0) { removeWithUndo(item, `${name} removed from pantry`); return; }
                 }
                 savePantryData();
                 renderPantryView();
@@ -1618,15 +1720,17 @@
                 return;
             }
 
-            pantryItems.push({
+            const newItem = {
                 id: VanFam.uid('p'),
                 name: name,
                 brand: brand,
                 category: category,
-                qty: qty,
+                qty: Math.max(1, qty),
                 upc: upc,
                 img: getCategoryEmoji(category)
-            });
+            };
+            pantryItems.push(newItem);
+            rememberProduct(newItem);
 
             savePantryData();
             renderPantryView();
@@ -1658,13 +1762,22 @@
             } catch (e) {}
         }
 
-        function showToast(msg) {
+        // showToast('Removed', 'Undo', () => {...}) shows a tap-able action button
+        function showToast(msg, actionLabel, actionFn) {
             const toast = document.getElementById('toast');
+            const btn = document.getElementById('toast-action');
             document.getElementById('toast-message').innerText = msg;
+            if (actionLabel && actionFn) {
+                btn.innerText = actionLabel;
+                btn.style.display = 'inline-block';
+                btn.onclick = () => { actionFn(); toast.classList.remove('show'); };
+            } else {
+                btn.style.display = 'none';
+                btn.onclick = null;
+            }
             toast.classList.add('show');
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 2400);
+            clearTimeout(showToast._t);
+            showToast._t = setTimeout(() => toast.classList.remove('show'), actionFn ? 5000 : 2400);
         }
     </script>
 </body>
