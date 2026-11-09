@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RAC Smokehouse Cookbook</title>
+    <title>VanFam Cookbook</title>
     <style>
         :root {
             --bg-dark: #0a0a0a;
@@ -22,11 +22,10 @@
             color: var(--text-main);
             margin: 0;
             padding: 0;
-            display: flex;
-            flex-direction: column;
             min-height: 100vh;
         }
 
+        /* Top App Bar Header */
         #app-header {
             background-color: var(--surface-dark);
             border-bottom: 1px solid var(--border-color);
@@ -34,29 +33,138 @@
             position: sticky;
             top: 0;
             z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 16px;
         }
 
-        #app-header h1 {
-            font-size: 18px;
+        .menu-btn {
+            background: none;
+            border: none;
             color: var(--accent-orange);
-            margin: 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            display: flex;
+            align-items: center;
         }
 
-        #app-header p {
+        .header-text h1 {
+            font-size: 18px;
+            color: #ffffff;
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        .header-text p {
             font-size: 11px;
             color: var(--text-muted);
             margin: 2px 0 0 0;
         }
 
+        /* Slide-Out Index Navigation */
+        #nav-drawer {
+            position: fixed;
+            top: 0;
+            left: -300px;
+            width: 280px;
+            height: 100%;
+            background-color: var(--surface-dark);
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            z-index: 200;
+            transition: left 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+        }
+
+        #nav-drawer.open {
+            left: 0;
+        }
+
+        .drawer-header {
+            padding: 24px 20px;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(180deg, rgba(255,87,34,0.05) 0%, rgba(0,0,0,0) 100%);
+        }
+
+        .drawer-header h2 {
+            margin: 0;
+            font-size: 18px;
+            color: var(--accent-orange);
+        }
+
+        .drawer-header p {
+            margin: 4px 0 0 0;
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .index-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .index-item {
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            background-color: #1c1c1e;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            border-left: 4px solid transparent;
+            transition: background-color 0.2s;
+        }
+
+        .index-item.active {
+            border-left-color: var(--accent-orange);
+            background-color: #242426;
+        }
+
+        .index-item h3 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            color: #ffffff;
+        }
+
+        .index-item span {
+            font-size: 11px;
+            color: var(--accent-gold);
+        }
+
+        #drawer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            z-index: 150;
+            display: none;
+        }
+
+        #drawer-overlay.show {
+            display: block;
+        }
+
+        /* Recipe Layout Container */
         #main-content {
             padding: 16px;
-            flex: 1;
+        }
+
+        .recipe-view {
+            display: none;
+        }
+
+        .recipe-view.active {
+            display: block;
         }
 
         .recipe-banner {
-            background: linear-gradient(180deg, rgba(255,87,34,0.1) 0%, rgba(20,20,20,0) 100%);
+            background: linear-gradient(180deg, rgba(255,87,34,0.08) 0%, rgba(0,0,0,0) 100%);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             padding: 16px;
@@ -121,7 +229,7 @@
             justify-content: center;
         }
 
-        #portion-display {
+        .portion-display {
             font-size: 15px;
             font-weight: bold;
             color: var(--accent-orange);
@@ -129,7 +237,7 @@
             text-align: center;
         }
 
-        h2 {
+        section h2 {
             font-size: 15px;
             color: var(--text-muted);
             text-transform: uppercase;
@@ -233,55 +341,39 @@
 </head>
 <body>
 
+    <!-- Main Toolbar App Bar -->
     <div id="app-header">
-        <h1>RAC Smokehouse Cookbook</h1>
-        <p>Pro Cook Interface v1.1</p>
+        <button class="menu-btn" onclick="toggleDrawer()">☰</button>
+        <div class="header-text">
+            <h1>VanFam Cookbook</h1>
+            <p id="current-recipe-subtitle">Laphroaig Bison Chili</p>
+        </div>
     </div>
 
+    <!-- Interactive Index Backdrop Overlay -->
+    <div id="drawer-overlay" onclick="toggleDrawer()"></div>
+
+    <!-- Side Menu Index Drawer -->
+    <div id="nav-drawer">
+        <div class="drawer-header">
+            <h2>Recipe Index</h2>
+            <p>VanFam Master Collection</p>
+        </div>
+        <div class="index-list">
+            <div class="index-item active" id="tab-chili" onclick="switchRecipe('chili', 'Laphroaig Bison Chili')">
+                <h3>Laphroaig Bison Chili</h3>
+                <span>Ninja Slow Cooker • Stew</span>
+            </div>
+            <div class="index-item" id="tab-pork" onclick="switchRecipe('pork', 'Smoked Pulled Pork')">
+                <h3>Smoked Pulled Pork</h3>
+                <span>Wood Smoker • Low & Slow</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Core Content Manager -->
     <div id="main-content">
-        <div class="recipe-banner">
-            <h1 class="recipe-title">Thick Laphroaig Bison & Brisket Chili</h1>
-            <div class="tags">
-                <span class="tag">Simple Truth Bison</span>
-                <span class="tag">Schweid & Sons</span>
-                <span class="tag">Laphroaig 10 Yr</span>
-                <span class="tag">V8 Reduction</span>
-            </div>
-        </div>
 
-        <div class="scaler-box">
-            <div class="scaler-title">Batch Scaling Matrix:</div>
-            <div class="scaler-controls">
-                <button class="scaler-btn" onclick="updateScale(-0.5)">-</button>
-                <div id="portion-display">1.0x Batch</div>
-                <button class="scaler-btn" onclick="updateScale(0.5)">+</button>
-            </div>
-        </div>
-
-        <h2>Ingredients</h2>
-        
-        <div class="ingredient-group-title">Proteins & Produce</div>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> lb Simple Truth Ground Bison (90/10)</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> lb Schweid & Sons Chuck/Brisket Blend</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> large Yellow Onion (finely diced)</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="4">4</b> cloves Fresh Garlic (minced)</span></label>
-
-        <div class="ingredient-group-title">The Master Spices</div>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="3">3</b> Tablespoons Pure Ground Ancho Chili</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="3">3</b> Tablespoons Regular Chili Powder</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="2">2</b> Tablespoons Smoked Paprika</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Tablespoon Ground Cumin</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text">A few shakes of Cayenne Pepper (to taste)</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text">A couple dashes of Ground Cinnamon</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Tablespoon Garlic Powder</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Tablespoon Onion Powder</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="2">2</b> Teaspoons Dried Oregano</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Teaspoon Black Pepper</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> to 1.5 Teaspoons Kosher Salt</span></label>
-
-        <div class="ingredient-group-title">Sauces & Liquid Base</div>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> bottle (64oz) Low Sodium V8 Juice</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> can (6 oz) Tomato Paste</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> can (28 oz) Crushed Tomatoes</span></label>
-        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="2">2</b> Tablespoons Worcestershire Sauce</span></label>
-        
+        <!-- ================= RECIPE 1: CHILI ================= -->
+        <div id="recipe-chili" class="recipe-view active">
+            <div class="recipe-banner">
