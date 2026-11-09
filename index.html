@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VanFam Hub</title>
+    <!-- Firebase (family sync). Must load before shared.js -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <script src="shared.js"></script>
     <style>
         :root {
@@ -173,6 +177,7 @@
         <div class="hub-header">
             <h1>VanFam Family Hub</h1>
             <p>Kitchen & Household Management</p>
+            <div style="margin-top:10px;"><span id="vf-sync-pill"></span></div>
         </div>
 
         <!-- QUICK SCAN: opens the pantry scanner already set to the right mode -->

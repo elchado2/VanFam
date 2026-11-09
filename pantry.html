@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VanFam Pantry & Shopping List</title>
+    <!-- Firebase (family sync). Must load before shared.js -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
     <!-- Shared storage + shopping list helpers (same file used by the cookbook and hub) -->
     <script src="shared.js"></script>
     <!-- HTML5 QRCode Scanner Library -->
@@ -867,7 +871,7 @@
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
                     Shared Grocery List
                 </h2>
-                <p class="hero-subtitle">Shared with the VanFam Cookbook on this device. Check off items as you shop, and tap "+ Restock" to add them straight into your Pantry.</p>
+                <p class="hero-subtitle">Shared with the whole family when you're signed in. Check off items as you shop, and tap "+ Restock" to add them straight into your Pantry.</p>
             </div>
 
             <!-- Controls Toolbar -->
@@ -993,6 +997,7 @@
     </div>
 
     <footer>
+        <span id="vf-sync-pill"></span><br>
         VanFam Master Pantry &bull; <a href="index.html" style="color:var(--accent-gold);">Family Hub</a> &bull; <a href="cookbook.html" style="color:var(--accent-gold);">Cookbook</a>
     </footer>
 
@@ -1100,7 +1105,7 @@
 
         function savePantryData() {
             try {
-                safeStorage.setItem('vanfam_pantry_inventory', JSON.stringify(pantryItems));
+                VanFam.savePantry(pantryItems);
             } catch (e) {}
             updateBadges();
         }
@@ -1516,19 +1521,17 @@
          * Product memory: remembers what each barcode is (including your edits),
          * so a product you used up and re-buy comes back with the same name and photo.
          */
-        const PRODUCT_MEMORY_KEY = 'vanfam_product_memory';
         function rememberProduct(item) {
             if (!item.upc) return;
-            const mem = VanFam.store.getJSON(PRODUCT_MEMORY_KEY, {}) || {};
+            const mem = VanFam.loadProducts();
             mem[item.upc] = {
                 name: item.name, brand: item.brand || '', size: item.size || '',
                 category: item.category, imgUrl: item.imgUrl || '', images: item.images || [], img: item.img || ''
             };
-            VanFam.store.setJSON(PRODUCT_MEMORY_KEY, mem);
+            VanFam.saveProducts(mem);
         }
         function recallProduct(upc) {
-            const mem = VanFam.store.getJSON(PRODUCT_MEMORY_KEY, {}) || {};
-            return mem[upc] || null;
+            return VanFam.loadProducts()[upc] || null;
         }
 
         // Looks up a barcode: product memory first, then the /api/upc Netlify function,
