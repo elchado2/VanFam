@@ -34,11 +34,14 @@ function titleCase(s) {
     return s.replace(/\b([a-z])/g, (m, c) => c.toUpperCase()).replace(/'S\b/g, "'s").trim();
 }
 
-// "10.7 oz (303.3 g)" -> "10.7 oz"
+// "10.7 oz (303.3 g)" -> "10.7 oz", "400 g e" / "400 g ℮" -> "400 g"
 function cleanSize(s) {
     if (!s) return '';
-    return String(s).replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    return String(s).replace(/\s*\(.*?\)\s*/g, ' ').replace(/\s*(℮|\be)\s*$/i, '').trim();
 }
+
+// Does the name already mention a size like "12 fl oz", "400 g", "6 Pack", "24 ct"?
+const SIZE_IN_NAME = /\d+(\.\d+)?\s*(fl\.?\s*oz|oz|ounce|lb|lbs|pound|g|kg|ml|l|liter|litre|gal|gallon|ct|count|pk|pack)\b/i;
 
 // Records what each database answered, for ?debug=1
 const trace = {};
@@ -102,7 +105,7 @@ export default async (req) => {
         name = titleCase(o.product_name_en || o.product_name || o.generic_name || '');
         if (brand && name && !name.toLowerCase().includes(brand.toLowerCase())) name = `${brand} ${name}`;
     }
-    if (name && size && !name.toLowerCase().includes(size.toLowerCase().split(' ')[0])) {
+    if (name && size && !SIZE_IN_NAME.test(name)) {
         name = `${name}, ${size}`;
     }
 
