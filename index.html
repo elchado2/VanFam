@@ -25,7 +25,6 @@
             min-height: 100vh;
         }
 
-        /* Top App Bar Header */
         #app-header {
             background-color: var(--surface-dark);
             border-bottom: 1px solid var(--border-color);
@@ -63,7 +62,6 @@
             margin: 2px 0 0 0;
         }
 
-        /* Slide-Out Index Navigation */
         #nav-drawer {
             position: fixed;
             top: 0;
@@ -150,7 +148,6 @@
             display: block;
         }
 
-        /* Recipe Layout Container */
         #main-content {
             padding: 16px;
         }
@@ -227,13 +224,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            user-select: none;
         }
 
         .portion-display {
             font-size: 15px;
             font-weight: bold;
             color: var(--accent-orange);
-            min-width: 70px;
+            min-width: 80px;
             text-align: center;
         }
 
@@ -341,7 +339,6 @@
 </head>
 <body>
 
-    <!-- Main Toolbar App Bar -->
     <div id="app-header">
         <button class="menu-btn" onclick="toggleDrawer()">☰</button>
         <div class="header-text">
@@ -350,10 +347,8 @@
         </div>
     </div>
 
-    <!-- Interactive Index Backdrop Overlay -->
     <div id="drawer-overlay" onclick="toggleDrawer()"></div>
 
-    <!-- Side Menu Index Drawer -->
     <div id="nav-drawer">
         <div class="drawer-header">
             <h2>Recipe Index</h2>
@@ -371,9 +366,11 @@
         </div>
     </div>
 
-    <!-- Core Content Manager -->
     <div id="main-content">
 
-        <!-- ================= RECIPE 1: CHILI ================= -->
+        <!-- ================= CHILI VIEW ================= -->
         <div id="recipe-chili" class="recipe-view active">
             <div class="recipe-banner">
+                <h1 class="recipe-title">Thick Laphroaig Bison & Brisket Chili</h1>
+                <div class="tags">
+                    <span class="tag">Simple Truth Bison</span>
