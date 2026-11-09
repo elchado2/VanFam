@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAC Smokehouse Cookbook</title>
+    <style>
+        :root {
+            --bg-dark: #0a0a0a;
+            --surface-dark: #141414;
+            --surface-card: #1c1c1e;
+            --accent-orange: #ff5722;
+            --accent-gold: #ffb703;
+            --text-main: #f2f2f7;
+            --text-muted: #8e8e93;
+            --border-color: #2c2c2e;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        #app-header {
+            background-color: var(--surface-dark);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        #app-header h1 {
+            font-size: 18px;
+            color: var(--accent-orange);
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        #app-header p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 2px 0 0 0;
+        }
+
+        #main-content {
+            padding: 16px;
+            flex: 1;
+        }
+
+        .recipe-banner {
+            background: linear-gradient(180deg, rgba(255,87,34,0.1) 0%, rgba(20,20,20,0) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .recipe-title {
+            font-size: 22px;
+            margin: 0 0 8px 0;
+            color: #ffffff;
+            font-weight: 800;
+        }
+
+        .tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 10px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            background-color: #242426;
+            color: var(--accent-gold);
+            border: 1px solid var(--border-color);
+        }
+
+        .scaler-box {
+            background-color: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scaler-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .scaler-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .scaler-btn {
+            background-color: #2c2c2e;
+            color: #ffffff;
+            border: 1px solid #444;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #portion-display {
+            font-size: 15px;
+            font-weight: bold;
+            color: var(--accent-orange);
+            min-width: 70px;
+            text-align: center;
+        }
+
+        h2 {
+            font-size: 15px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 24px 0 12px 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+        }
+
+        .ingredient-group-title {
+            font-size: 11px;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+            margin: 14px 0 6px 0;
+            font-weight: bold;
+        }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background-color: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 6px;
+        }
+
+        .item-row input[type="checkbox"] {
+            margin-right: 12px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent-orange);
+        }
+
+        .item-text {
+            font-size: 13.5px;
+            line-height: 1.4;
+        }
+
+        .item-row input:checked + .item-text {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        .step-card {
+            background-color: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .step-card.completed {
+            border-color: #30d158;
+            background-color: rgba(48, 209, 88, 0.03);
+        }
+
+        .step-badge {
+            background-color: #2c2c2e;
+            color: var(--accent-gold);
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 6px;
+            border-radius: 4px;
+            height: fit-content;
+        }
+
+        .step-card.completed .step-badge {
+            background-color: #30d158;
+            color: #000000;
+        }
+
+        .step-body {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 4px;
+        }
+
+        .step-card.completed .step-title {
+            color: var(--text-muted);
+            text-decoration: line-through;
+        }
+
+        .step-desc {
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-main);
+        }
+
+        .step-card.completed .step-desc {
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-header">
+        <h1>RAC Smokehouse Cookbook</h1>
+        <p>Pro Cook Interface v1.1</p>
+    </div>
+
+    <div id="main-content">
+        <div class="recipe-banner">
+            <h1 class="recipe-title">Thick Laphroaig Bison & Brisket Chili</h1>
+            <div class="tags">
+                <span class="tag">Simple Truth Bison</span>
+                <span class="tag">Schweid & Sons</span>
+                <span class="tag">Laphroaig 10 Yr</span>
+                <span class="tag">V8 Reduction</span>
+            </div>
+        </div>
+
+        <div class="scaler-box">
+            <div class="scaler-title">Batch Scaling Matrix:</div>
+            <div class="scaler-controls">
+                <button class="scaler-btn" onclick="updateScale(-0.5)">-</button>
+                <div id="portion-display">1.0x Batch</div>
+                <button class="scaler-btn" onclick="updateScale(0.5)">+</button>
+            </div>
+        </div>
+
+        <h2>Ingredients</h2>
+        
+        <div class="ingredient-group-title">Proteins & Produce</div>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> lb Simple Truth Ground Bison (90/10)</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> lb Schweid & Sons Chuck/Brisket Blend</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> large Yellow Onion (finely diced)</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="4">4</b> cloves Fresh Garlic (minced)</span></label>
+
+        <div class="ingredient-group-title">The Master Spices</div>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="3">3</b> Tablespoons Pure Ground Ancho Chili</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="3">3</b> Tablespoons Regular Chili Powder</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="2">2</b> Tablespoons Smoked Paprika</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Tablespoon Ground Cumin</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text">A few shakes of Cayenne Pepper (to taste)</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text">A couple dashes of Ground Cinnamon</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Tablespoon Garlic Powder</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Tablespoon Onion Powder</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="2">2</b> Teaspoons Dried Oregano</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> Teaspoon Black Pepper</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> to 1.5 Teaspoons Kosher Salt</span></label>
+
+        <div class="ingredient-group-title">Sauces & Liquid Base</div>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> bottle (64oz) Low Sodium V8 Juice</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> can (6 oz) Tomato Paste</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="1">1</b> can (28 oz) Crushed Tomatoes</span></label>
+        <label class="item-row"><input type="checkbox"><span class="item-text"><b data-base="2">2</b> Tablespoons Worcestershire Sauce</span></label>
+        
