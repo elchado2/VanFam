@@ -4,14 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VanFam Pantry & Shopping List</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <!-- Shared storage + shopping list helpers (same file used by the cookbook and hub) -->
+    <script src="shared.js"></script>
+    <!-- HTML5 QRCode Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <style>
         :root {
             --bg-dark: #0a0a0a;
             --surface-dark: #141414;
             --surface-card: #1c1c1e;
+            --surface-hover: #242426;
             --accent-orange: #ff5722;
+            --accent-orange-hover: #e04818;
             --accent-gold: #ffb703;
+            --accent-green: #30d158;
+            --accent-red: #ff453a;
             --text-main: #f2f2f7;
             --text-muted: #8e8e93;
             --border-color: #2c2c2e;
@@ -19,59 +26,145 @@
 
         * {
             box-sizing: border-box;
-            margin: 0;
-            padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-dark);
             color: var(--text-main);
+            margin: 0;
+            padding: 0;
             min-height: 100vh;
-            padding-bottom: 40px;
+            display: flex;
+            flex-direction: column;
         }
 
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--surface-dark);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a3c;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-orange);
+        }
+
+        /* App Header Bar */
         #app-header {
             background-color: var(--surface-dark);
             border-bottom: 1px solid var(--border-color);
-            padding: 16px 20px;
+            padding: 12px 16px;
             position: sticky;
             top: 0;
             z-index: 100;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
 
-        .back-link {
-            color: var(--accent-orange);
-            text-decoration: none;
-            font-size: 14px;
-            font-weight: 700;
-        }
-
-        .header-title {
-            font-size: 17px;
-            font-weight: 800;
-            color: #ffffff;
-        }
-
-        .tab-bar {
+        .header-left {
             display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header-text h1 {
+            font-size: 17px;
+            color: #ffffff;
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+        }
+
+        .header-text p {
+            font-size: 11px;
+            color: var(--accent-gold);
+            margin: 1px 0 0 0;
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-icon-btn {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 7px 11px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .action-icon-btn:hover {
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+            background: var(--surface-hover);
+        }
+
+        .action-icon-btn.primary-highlight {
+            background: var(--accent-orange);
+            color: #ffffff;
+            border-color: var(--accent-orange);
+        }
+
+        .action-icon-btn.primary-highlight:hover {
+            background: var(--accent-orange-hover);
+        }
+
+        /* Navigation Tab Bar */
+        .tab-bar {
             background-color: var(--surface-dark);
             border-bottom: 1px solid var(--border-color);
+            display: flex;
+            padding: 0 16px;
+            gap: 4px;
         }
 
         .tab-btn {
-            flex: 1;
-            padding: 14px;
+            padding: 12px 16px;
+            font-size: 13.5px;
+            font-weight: 700;
+            color: var(--text-muted);
             background: none;
             border: none;
-            color: var(--text-muted);
-            font-size: 14px;
-            font-weight: 700;
-            cursor: pointer;
             border-bottom: 3px solid transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
         }
 
         .tab-btn.active {
@@ -79,468 +172,1486 @@
             border-bottom-color: var(--accent-orange);
         }
 
-        .main-container {
-            padding: 16px;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .scan-banner {
-            background: linear-gradient(180deg, rgba(255,87,34,0.12) 0%, rgba(0,0,0,0) 100%);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .mode-selector {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
-        }
-
-        .mode-btn {
-            flex: 1;
-            padding: 10px;
+        .badge {
             background-color: var(--surface-card);
+            color: var(--accent-gold);
             border: 1px solid var(--border-color);
-            color: var(--text-main);
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 12px;
-            cursor: pointer;
+            font-size: 10.5px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 10px;
         }
 
-        .mode-btn.active {
+        .tab-btn.active .badge {
             background-color: var(--accent-orange);
             color: #ffffff;
             border-color: var(--accent-orange);
         }
 
-        .action-btn {
+        /* Main Content Container */
+        #main-content {
+            flex: 1;
+            max-width: 900px;
             width: 100%;
-            padding: 14px;
+            margin: 0 auto;
+            padding: 16px 14px 40px 14px;
+        }
+
+        .app-view {
+            display: none;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        .app-view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Hero Banner */
+        .hero-banner {
+            background: linear-gradient(135deg, rgba(255,87,34,0.15) 0%, rgba(20,20,20,0.95) 100%);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 20px;
+            position: relative;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+        }
+
+        .hero-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #ffffff;
+            margin: 0 0 6px 0;
+        }
+
+        .hero-subtitle {
+            font-size: 13px;
+            color: var(--text-main);
+            opacity: 0.9;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        /* Controls & Filter Toolbar */
+        .controls-toolbar {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        @media (min-width: 640px) {
+            .controls-toolbar {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+        }
+
+        .search-box input {
+            width: 100%;
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-color);
+            color: #ffffff;
+            padding: 9px 12px 9px 34px;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-orange);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .category-scroll {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .category-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .cat-chip {
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 5px 11px;
+            border-radius: 20px;
+            font-size: 11.5px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s ease;
+        }
+
+        .cat-chip.active {
             background-color: var(--accent-orange);
             color: #ffffff;
+            border-color: var(--accent-orange);
+        }
+
+        /* Pantry Cards Grid */
+        .pantry-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (min-width: 640px) {
+            .pantry-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .pantry-card {
+            background-color: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .pantry-card:hover {
+            border-color: #3a3a3c;
+            background-color: var(--surface-card);
+        }
+
+        .pantry-card.low-stock {
+            border-color: rgba(255, 183, 3, 0.4);
+            background: linear-gradient(135deg, rgba(255,183,3,0.05) 0%, var(--surface-dark) 100%);
+        }
+
+        .pantry-img {
+            width: 54px;
+            height: 54px;
+            border-radius: 8px;
+            object-fit: cover;
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .pantry-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .pantry-title {
+            font-size: 14.5px;
+            font-weight: 700;
+            color: #ffffff;
+            margin: 0 0 2px 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pantry-brand {
+            font-size: 11.5px;
+            color: var(--accent-gold);
+            margin: 0 0 6px 0;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .pantry-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .qty-control {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 3px 6px;
+        }
+
+        .qty-btn {
+            background: none;
             border: none;
-            border-radius: 10px;
+            color: #ffffff;
             font-size: 15px;
             font-weight: 800;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
             cursor: pointer;
-        }
-
-        .action-btn.secondary {
-            background-color: var(--surface-card);
-            border: 1px solid var(--border-color);
-            color: var(--accent-gold);
-            margin-top: 10px;
-        }
-
-        .input-group {
             display: flex;
-            gap: 8px;
-            margin-bottom: 16px;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s;
         }
 
-        .input-group input {
-            flex: 1;
-            padding: 12px;
-            background-color: var(--surface-card);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: #ffffff;
-            font-size: 14px;
+        .qty-btn:hover {
+            background-color: rgba(255,255,255,0.1);
         }
 
-        .input-group button {
-            padding: 12px 18px;
-            background-color: var(--surface-card);
+        .qty-val {
+            font-size: 13.5px;
+            font-weight: 800;
+            color: var(--accent-orange);
+            min-width: 24px;
+            text-align: center;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: 4px;
+            margin-left: auto;
+        }
+
+        .icon-action-btn {
+            background: none;
             border: 1px solid var(--border-color);
-            color: var(--accent-gold);
-            border-radius: 8px;
-            font-weight: 700;
+            color: var(--text-muted);
+            padding: 6px 8px;
+            border-radius: 6px;
             cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .list-card {
+        .icon-action-btn:hover {
+            border-color: var(--accent-gold);
+            color: var(--accent-gold);
+            background: var(--surface-card);
+        }
+
+        .icon-action-btn.delete:hover {
+            border-color: var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        /* Shopping List View Styles */
+        .shopping-item-row {
+            display: flex;
+            align-items: center;
+            padding: 11px 14px;
             background-color: var(--surface-dark);
             border: 1px solid var(--border-color);
             border-radius: 10px;
-            padding: 14px;
-            margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .shop-item-left {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex: 1;
+            margin-bottom: 6px;
             cursor: pointer;
+            transition: all 0.15s ease;
+            gap: 12px;
         }
 
-        .shop-item-left input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--accent-orange);
+        .shopping-item-row:hover {
+            background-color: var(--surface-card);
+            border-color: #3a3a3c;
         }
 
-        .item-title {
-            font-size: 14px;
-            font-weight: 600;
+        .shopping-item-row.checked {
+            background-color: rgba(28, 28, 30, 0.4);
+            border-color: #222224;
         }
 
-        .item-title.checked {
+        .shopping-item-row.checked .shopping-item-text {
             color: var(--text-muted);
             text-decoration: line-through;
         }
 
-        .qty-controls {
+        .shopping-item-text {
+            font-size: 14px;
+            color: #ffffff;
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        .restock-btn {
+            background-color: rgba(48, 209, 88, 0.12);
+            border: 1px solid var(--accent-green);
+            color: var(--accent-green);
+            font-size: 11.5px;
+            font-weight: 700;
+            padding: 4px 9px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 4px;
         }
 
-        .qty-btn {
-            background-color: var(--surface-card);
-            border: 1px solid var(--border-color);
-            color: #ffffff;
-            width: 30px;
-            height: 30px;
-            border-radius: 50%;
-            font-size: 16px;
-            cursor: pointer;
+        .restock-btn:hover {
+            background-color: var(--accent-green);
+            color: #000000;
         }
 
-        .qty-count {
-            font-weight: 700;
-            color: var(--accent-gold);
-            min-width: 20px;
-            text-align: center;
-        }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: #ff453a;
-            font-size: 18px;
-            cursor: pointer;
-            padding: 4px 8px;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 30px 10px;
-            color: var(--text-muted);
-            font-size: 14px;
-        }
-
-        /* Scanner Modal */
+        /* Scanner Modal Overlay */
         #scanner-modal {
-            display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-color: rgba(0,0,0,0.9);
-            z-index: 500;
+            background: rgba(0,0,0,0.92);
+            backdrop-filter: blur(6px);
+            z-index: 300;
+            display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 20px;
+            justify-content: flex-start;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease;
+            overflow-y: auto;
         }
 
-        #reader-container {
+        #scanner-modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .scanner-card {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
             width: 100%;
-            max-width: 400px;
-            background-color: #000;
+            max-width: 460px;
+            padding: 18px;
+            margin: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .scan-mode-tabs {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            background: var(--surface-card);
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+        }
+
+        .scan-mode-btn {
+            background: none;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 800;
+            padding: 9px 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .scan-mode-btn.mode-in.active {
+            background: var(--accent-green);
+            color: #000000;
+        }
+
+        .scan-mode-btn.mode-out.active {
+            background: var(--accent-red);
+            color: #ffffff;
+        }
+
+        .scan-mode-btn.mode-low.active {
+            background: var(--accent-orange);
+            color: #ffffff;
+        }
+
+        .scan-hint {
+            font-size: 12px;
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        #reader {
+            width: 100%;
             border-radius: 12px;
             overflow: hidden;
+            background: #000000;
+            border: 2px dashed var(--border-color);
+            min-height: 240px;
         }
 
-        .close-scanner-btn {
-            margin-top: 20px;
-            padding: 12px 24px;
-            background-color: #ff453a;
+        /* Generic Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(4px);
+            z-index: 350;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            background: var(--surface-dark);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 420px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .form-group label {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: var(--accent-gold);
+            text-transform: uppercase;
+        }
+
+        .form-group input, .form-group select {
+            background: var(--surface-card);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 9px 12px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--accent-orange);
+        }
+
+        /* Buttons */
+        .btn-primary {
+            background: var(--accent-orange);
             color: #fff;
             border: none;
+            padding: 10px 18px;
             border-radius: 8px;
             font-weight: 700;
+            font-size: 13px;
             cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-orange-hover);
+        }
+
+        .btn-secondary {
+            background: var(--surface-card);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 9px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-secondary:hover {
+            background: var(--surface-hover);
+        }
+
+        /* Toast Popup */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background-color: var(--surface-card);
+            border: 1px solid var(--accent-orange);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.6);
+            z-index: 500;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        #toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Replaces the two Tailwind classes this page used */
+        .hide-mobile { display: none; }
+        @media (min-width: 640px) { .hide-mobile { display: inline; } }
+        .pantry-img img { width: 100%; height: 100%; object-fit: cover; }
+        a.action-icon-btn { text-decoration: none; }
+
+        .source-tag {
+            font-size: 11px; color: var(--accent-gold); background: var(--surface-card);
+            padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-color);
+            margin-left: 6px; display: inline-block;
+        }
+        .shopping-item-text { font-size: 15px; }
+        .cat-chip { font-size: 12.5px; padding: 6px 12px; }
+
+        footer {
+            text-align: center;
+            padding: 20px 16px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 11.5px;
+            margin-top: auto;
+            background: var(--surface-dark);
         }
     </style>
 </head>
 <body>
 
-    <div id="app-header">
-        <a href="index.html" class="back-link">&larr; Hub</a>
-        <div class="header-title">VanFam Pantry</div>
-        <div></div>
-    </div>
-
-    <div class="tab-bar">
-        <button class="tab-btn active" id="tab-btn-pantry" onclick="switchTab('pantry')">Pantry Inventory</button>
-        <button class="tab-btn" id="tab-btn-shopping" onclick="switchTab('shopping')">Shopping List</button>
-    </div>
-
-    <div class="main-container">
-        
-        <!-- PANTRY VIEW -->
-        <div id="pantry-view" class="tab-content active">
-            <div class="scan-banner">
-                <div class="mode-selector">
-                    <button class="mode-btn active" id="mode-in" onclick="setScanMode('IN')">+ IN (Stock)</button>
-                    <button class="mode-btn" id="mode-out" onclick="setScanMode('OUT')">- OUT (Used)</button>
-                    <button class="mode-btn" id="mode-low" onclick="setScanMode('LOW')">🛒 LOW (To List)</button>
+    <!-- App Header Bar -->
+    <header id="app-header">
+        <div class="header-left">
+            <button class="brand-btn" onclick="switchTab('pantry')">
+                <div class="header-text">
+                    <h1>VanFam Pantry</h1>
+                    <p>Inventory & UPC Scanner</p>
                 </div>
-                <button class="action-btn" onclick="startScanner()">📷 Scan Barcode</button>
+            </button>
+        </div>
+        <div class="header-actions">
+            <!-- Links back to the hub and the cookbook -->
+            <a href="index.html" class="action-icon-btn" title="Family Hub">
+                <span>🏡</span><span class="hide-mobile">Hub</span>
+            </a>
+            <a href="cookbook.html" class="action-icon-btn" title="Open VanFam Cookbook">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                <span class="hide-mobile">Cookbook</span>
+            </a>
+            <!-- Quick UPC Camera Scanner Launch -->
+            <button class="action-icon-btn primary-highlight" onclick="openScannerModal()" title="Launch Camera UPC Scanner">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                <span>Scan UPC</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Navigation Bar -->
+    <nav class="tab-bar">
+        <button class="tab-btn active" id="tab-btn-pantry" onclick="switchTab('pantry')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+            Pantry Stock
+            <span class="badge" id="pantry-count-badge">0</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-shopping" onclick="switchTab('shopping')">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+            Shopping List
+            <span class="badge" id="shopping-count-badge">0</span>
+        </button>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main id="main-content">
+
+        <!-- 1. PANTRY INVENTORY VIEW -->
+        <div id="pantry-view" class="app-view active">
+            <div class="hero-banner">
+                <h2 class="hero-title">Pantry Inventory</h2>
+                <p class="hero-subtitle">Keep track of items in your kitchen. Scan barcodes to restock or consume, and quickly flag items that need reordering.</p>
             </div>
 
-            <div class="input-group">
-                <input type="text" id="manual-pantry-input" placeholder="Add custom item to pantry...">
-                <button onclick="addManualPantryItem()">+ Add</button>
+            <!-- Controls Toolbar -->
+            <div class="controls-toolbar">
+                <div class="search-box">
+                    <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="pantry-search-input" placeholder="Search pantry by name, brand, or barcode..." oninput="renderPantryView()">
+                </div>
+                <button class="btn-primary" onclick="openManualAddModal()" style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    + Add Item
+                </button>
             </div>
 
-            <div id="pantry-list"></div>
+            <!-- Category Pills Bar -->
+            <div class="category-scroll" id="category-pills">
+                <button class="cat-chip active" data-cat="All" onclick="filterCategory('All')">All Items</button>
+                <button class="cat-chip" data-cat="Pantry & Cans" onclick="filterCategory('Pantry & Cans')">🥫 Cans & Dry</button>
+                <button class="cat-chip" data-cat="Dairy & Eggs" onclick="filterCategory('Dairy & Eggs')">🧀 Dairy</button>
+                <button class="cat-chip" data-cat="Meat & Seafood" onclick="filterCategory('Meat & Seafood')">🥩 Meats</button>
+                <button class="cat-chip" data-cat="Produce" onclick="filterCategory('Produce')">🥬 Produce</button>
+                <button class="cat-chip" data-cat="Beverages" onclick="filterCategory('Beverages')">🥃 Drinks</button>
+                <button class="cat-chip" data-cat="Snacks" onclick="filterCategory('Snacks')">🥨 Snacks</button>
+                <button class="cat-chip" data-cat="Household" onclick="filterCategory('Household')">🧻 Household</button>
+            </div>
+
+            <!-- Pantry Grid Container -->
+            <div class="pantry-grid" id="pantry-items-container" style="margin-top:16px;">
+                <!-- Dynamically populated pantry cards -->
+            </div>
         </div>
 
-        <!-- SHOPPING LIST VIEW -->
-        <div id="shopping-view" class="tab-content">
-            <div style="margin-bottom: 16px; display: flex; gap: 8px;">
-                <button class="action-btn secondary" style="margin: 0; flex: 1;" onclick="copyListForNotes()">📋 Copy for Notes</button>
-                <button class="action-btn secondary" style="margin: 0; flex: 1; border-color: #ff453a; color: #ff453a;" onclick="clearShoppingList()">🗑️ Clear</button>
+        <!-- 2. SHARED SHOPPING LIST VIEW -->
+        <div id="shopping-view" class="app-view">
+            <div class="hero-banner" style="background: linear-gradient(135deg, rgba(255,183,3,0.15) 0%, rgba(20,20,20,0.95) 100%);">
+                <h2 class="hero-title" style="display:flex; align-items:center; gap:8px;">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                    Shared Grocery List
+                </h2>
+                <p class="hero-subtitle">Shared with the VanFam Cookbook on this device. Check off items as you shop, and tap "+ Restock" to add them straight into your Pantry.</p>
             </div>
 
-            <div class="input-group">
-                <input type="text" id="manual-shop-input" placeholder="Add item to shopping list...">
-                <button onclick="addManualShoppingItem()">+ Add</button>
+            <!-- Controls Toolbar -->
+            <div class="controls-toolbar" style="flex-direction:column; align-items:stretch; gap:10px;">
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="custom-shopping-input" placeholder="Add grocery item..." 
+                           style="flex:1; background:var(--surface-card); border:1px solid var(--border-color); color:#fff; padding:9px 12px; border-radius:8px; font-size:13.5px; outline:none;"
+                           onkeypress="if(event.key === 'Enter') addCustomShoppingItem()">
+                    <button class="btn-primary" onclick="addCustomShoppingItem()" style="padding:9px 16px;">Add</button>
+                </div>
+                <div style="display:flex; gap:8px; justify-content:space-between; flex-wrap:wrap; border-top:1px solid var(--border-color); padding-top:10px; margin-top:2px;">
+                    <button class="btn-secondary" onclick="shareShoppingList()" style="display:flex; align-items:center; gap:6px; font-size:12.5px;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Share / Copy List
+                    </button>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-secondary" onclick="clearCompletedShoppingItems()" style="font-size:11.5px; color:var(--text-muted);">Clear Checked</button>
+                        <button class="btn-secondary" onclick="clearAllShoppingItems()" style="font-size:11.5px; color:var(--accent-red);">Clear All</button>
+                    </div>
+                </div>
             </div>
 
-            <div id="shopping-list-items"></div>
+            <!-- Shopping Items List -->
+            <div id="shopping-items-container" style="margin-top:16px;">
+                <!-- Dynamically populated shopping items -->
+            </div>
         </div>
 
-    </div>
+    </main>
 
-    <!-- SCANNER MODAL -->
+    <!-- CAMERA UPC SCANNER MODAL -->
     <div id="scanner-modal">
-        <div id="reader-container"></div>
-        <button class="close-scanner-btn" onclick="stopScanner()">Close Camera</button>
+        <div class="scanner-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; font-size:17px; font-weight:800; color:#fff;">UPC Barcode Scanner</h3>
+                <button onclick="closeScannerModal()" style="background:none; border:none; color:var(--text-muted); font-size:22px; cursor:pointer;">&times;</button>
+            </div>
+
+            <!-- Mode Selector Buttons -->
+            <div class="scan-mode-tabs">
+                <button class="scan-mode-btn mode-in active" id="btn-mode-in" onclick="setScanMode('IN')">
+                    <span>+ IN</span>
+                    <span style="font-size:9.5px; opacity:0.8;">Restock Stock</span>
+                </button>
+                <button class="scan-mode-btn mode-out" id="btn-mode-out" onclick="setScanMode('OUT')">
+                    <span>- OUT</span>
+                    <span style="font-size:9.5px; opacity:0.8;">Consume Item</span>
+                </button>
+                <button class="scan-mode-btn mode-low" id="btn-mode-low" onclick="setScanMode('LOW')">
+                    <span>! LOW</span>
+                    <span style="font-size:9.5px; opacity:0.8;">Add to List</span>
+                </button>
+            </div>
+
+            <div class="scan-hint" id="scan-mode-description">
+                Scanning in IN mode: Increases item stock count in Pantry by +1.
+            </div>
+
+            <!-- Camera Viewfinder -->
+            <div id="reader"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px;">
+                <span id="scanner-status" style="color:var(--accent-gold); font-weight:600;">Point camera at product barcode...</span>
+                <button class="btn-secondary" onclick="promptManualBarcode()" style="font-size:11px; padding:4px 8px;">Type Code</button>
+            </div>
+
+            <button class="btn-secondary" onclick="closeScannerModal()">Done Scanning</button>
+        </div>
     </div>
 
+    <!-- MANUAL ITEM ADD / EDIT MODAL -->
+    <div class="modal-overlay" id="manual-modal">
+        <div class="modal-card">
+            <h3 style="margin:0 0 14px 0; font-size:17px; font-weight:800; color:#fff;" id="modal-form-title">Add Pantry Item</h3>
+            <input type="hidden" id="form-edit-id" value="">
+
+            <div class="form-group">
+                <label>Product Name *</label>
+                <input type="text" id="form-name" placeholder="e.g., Laphroaig 10 Year Single Malt">
+            </div>
+
+            <div class="form-group">
+                <label>Brand / Producer</label>
+                <input type="text" id="form-brand" placeholder="e.g., Laphroaig">
+            </div>
+
+            <div class="form-group">
+                <label>Category</label>
+                <select id="form-category">
+                    <option value="Pantry & Cans">🥫 Pantry & Cans</option>
+                    <option value="Dairy & Eggs">🧀 Dairy & Eggs</option>
+                    <option value="Meat & Seafood">🥩 Meat & Seafood</option>
+                    <option value="Produce">🥬 Produce</option>
+                    <option value="Beverages">🥃 Beverages</option>
+                    <option value="Snacks">🥨 Snacks</option>
+                    <option value="Household">🧻 Household</option>
+                </select>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" id="form-qty" value="1" min="0">
+                </div>
+                <div class="form-group">
+                    <label>UPC Barcode (Optional)</label>
+                    <input type="text" id="form-upc" placeholder="Barcode number">
+                </div>
+            </div>
+
+            <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                <button class="btn-secondary" onclick="closeManualModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveManualItem()">Save Item</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Popup -->
+    <div id="toast">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-orange)" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        <span id="toast-message">Notification message</span>
+    </div>
+
+    <footer>
+        VanFam Master Pantry &bull; <a href="index.html" style="color:var(--accent-gold);">Family Hub</a> &bull; <a href="cookbook.html" style="color:var(--accent-gold);">Cookbook</a>
+    </footer>
+
+    <!-- JavaScript Application Core -->
     <script>
+        /**
+         * SAFE STORAGE PROXY SYSTEM
+         * Handles localStorage safely inside sandboxed preview iframes.
+         */
         const safeStorage = {
-            getItem(key) {
-                try { return localStorage.getItem(key); }
-                catch (e) { return window[key] || null; }
-            },
-            setItem(key, value) {
-                try { localStorage.setItem(key, value); }
-                catch (e) { window[key] = value; }
-            }
+            getItem: k => VanFam.store.get(k),
+            setItem: (k, v) => VanFam.store.set(k, v),
+            removeItem: k => VanFam.store.remove(k)
+        };
+        const esc = VanFam.escapeHtml;
+
+        /**
+         * Global Application State
+         */
+        let pantryItems = [];
+        let shoppingList = [];
+        let activeTab = 'pantry';
+        let activeCategory = 'All';
+        let currentScanMode = 'IN'; // 'IN', 'OUT', 'LOW'
+        let html5QrCode = null;
+        let scanCooldown = false;
+
+        // Sample initial pantry inventory if empty
+        const INITIAL_PANTRY = [
+            { id: 'p1', name: 'Simple Truth Ground Bison', brand: 'Simple Truth', category: 'Meat & Seafood', qty: 2, upc: '011110854483', img: '🥩' },
+            { id: 'p2', name: 'Laphroaig 10 Year Islay Scotch', brand: 'Laphroaig', category: 'Beverages', qty: 1, upc: '088004000049', img: '🥃' },
+            { id: 'p3', name: 'Low Sodium V8 Juice 64oz', brand: 'Campbell\'s', category: 'Beverages', qty: 3, upc: '051000012517', img: '🥫' },
+            { id: 'p4', name: 'Tillamook Extra Sharp Cheddar', brand: 'Tillamook', category: 'Dairy & Eggs', qty: 1, upc: '075925300105', img: '🧀' }
+        ];
+
+        /**
+         * App Initialization & Syncing
+         */
+        window.onload = function() {
+            loadAllData();
+            renderPantryView();
+            renderShoppingView();
+            updateBadges();
+
+            // pantry.html?tab=shopping opens straight to the list (used by the hub and cookbook)
+            const tab = new URLSearchParams(location.search).get('tab');
+            if (tab === 'shopping') switchTab('shopping');
+
+            // Pick up changes made on the cookbook page
+            VanFam.onDataChange(() => {
+                loadAllData();
+                renderPantryView();
+                renderShoppingView();
+                updateBadges();
+            });
         };
 
-        let pantryItems = JSON.parse(safeStorage.getItem('vanfam_pantry_items') || '[]');
-        let shoppingList = JSON.parse(safeStorage.getItem('vanfam_master_shopping_list') || '[]');
-        let currentScanMode = 'IN';
-        let html5QrCode = null;
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Check if arriving with ?tab=shopping parameter
-            const urlParams = new URLSearchParams(window.location.search);
-            if (urlParams.get('tab') === 'shopping' || window.location.hash === '#shopping') {
-                switchTab('shopping');
+        function loadAllData() {
+            // Load Pantry Stock
+            try {
+                const savedPantry = safeStorage.getItem('vanfam_pantry_inventory');
+                const olderPantry = VanFam.store.getJSON('vanfam_pantry_items', null);
+                if (savedPantry) {
+                    pantryItems = JSON.parse(savedPantry);
+                } else if (Array.isArray(olderPantry) && olderPantry.length) {
+                    // Bring over items saved by the earlier pantry page
+                    pantryItems = olderPantry.map(i => ({
+                        id: VanFam.uid('p'),
+                        name: i.name || 'Item',
+                        brand: '',
+                        category: 'Pantry & Cans',
+                        qty: Number(i.qty) || 0,
+                        upc: i.upc || '',
+                        img: '🥫'
+                    }));
+                    savePantryData();
+                } else {
+                    pantryItems = [...INITIAL_PANTRY];
+                    savePantryData();
+                }
+            } catch (e) {
+                pantryItems = [...INITIAL_PANTRY];
             }
-            initScanner();
-            renderPantry();
-            renderShoppingList();
-        });
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            // Shared shopping list (same key the cookbook and hub use)
+            shoppingList = VanFam.loadList();
+        }
 
-            if (tabName === 'pantry') {
-                document.getElementById('tab-btn-pantry').classList.add('active');
-                document.getElementById('pantry-view').classList.add('active');
-            } else if (tabName === 'shopping') {
-                document.getElementById('tab-btn-shopping').classList.add('active');
-                document.getElementById('shopping-view').classList.add('active');
+        function savePantryData() {
+            try {
+                safeStorage.setItem('vanfam_pantry_inventory', JSON.stringify(pantryItems));
+            } catch (e) {}
+            updateBadges();
+        }
+
+        function saveShoppingData() {
+            VanFam.saveList(shoppingList);
+            updateBadges();
+        }
+
+        function updateBadges() {
+            document.getElementById('pantry-count-badge').innerText = pantryItems.reduce((acc, item) => acc + item.qty, 0);
+            document.getElementById('shopping-count-badge').innerText = shoppingList.filter(i => !i.checked).length;
+        }
+
+        /**
+         * Tab Navigation
+         */
+        function switchTab(tab) {
+            activeTab = tab;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.app-view').forEach(v => v.classList.remove('active'));
+
+            document.getElementById(`tab-btn-${tab}`).classList.add('active');
+            document.getElementById(`${tab}-view`).classList.add('active');
+
+            if (tab === 'pantry') renderPantryView();
+            if (tab === 'shopping') renderShoppingView();
+        }
+
+        function filterCategory(cat) {
+            activeCategory = cat;
+            document.querySelectorAll('.cat-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.cat === cat);
+            });
+            renderPantryView();
+        }
+
+        /**
+         * Pantry View Rendering
+         */
+        function renderPantryView() {
+            const container = document.getElementById('pantry-items-container');
+            const search = (document.getElementById('pantry-search-input').value || '').toLowerCase();
+
+            let filtered = pantryItems.filter(item => {
+                const matchesSearch = item.name.toLowerCase().includes(search) || 
+                                      (item.brand && item.brand.toLowerCase().includes(search)) ||
+                                      (item.upc && item.upc.includes(search));
+                const matchesCat = activeCategory === 'All' || item.category === activeCategory;
+                return matchesSearch && matchesCat;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div style="grid-column: 1 / -1; text-align:center; padding:36px 16px; background:var(--surface-dark); border:1px dashed var(--border-color); border-radius:12px;">
+                        <p style="color:#fff; font-size:14.5px; font-weight:700; margin:0 0 6px 0;">No pantry items found</p>
+                        <p style="color:var(--text-muted); font-size:12.5px; margin:0 0 14px 0;">Try adjusting your search or add items manually / via barcode scanner.</p>
+                        <button class="btn-primary" onclick="openManualAddModal()">+ Add New Item</button>
+                    </div>
+                `;
+                return;
             }
+
+            let html = '';
+            filtered.forEach(item => {
+                const isLow = item.qty <= 1;
+                const imgDisplay = item.imgUrl ?
+                    `<img src="${esc(item.imgUrl)}" onerror="this.outerHTML='<span>${item.img || getCategoryEmoji(item.category)}</span>'">` :
+                    `<span>${item.img || getCategoryEmoji(item.category)}</span>`;
+
+                html += `
+                    <div class="pantry-card ${isLow ? 'low-stock' : ''}">
+                        <div class="pantry-img">${imgDisplay}</div>
+                        <div class="pantry-info">
+                            <h3 class="pantry-title">${esc(item.name)}</h3>
+                            <p class="pantry-brand">${esc(item.brand || item.category)}</p>
+                            <div class="pantry-meta">
+                                <div class="qty-control">
+                                    <button class="qty-btn" onclick="adjustPantryQty('${item.id}', -1)">&minus;</button>
+                                    <span class="qty-val">${item.qty}</span>
+                                    <button class="qty-btn" onclick="adjustPantryQty('${item.id}', 1)">&plus;</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-actions">
+                            <button class="icon-action-btn" onclick="openEditModal('${item.id}')" title="Edit Item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"></path></svg>
+                            </button>
+                            <button class="icon-action-btn" onclick="flagLowAndAddToList('${item.id}')" title="Add to Shopping List">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                            </button>
+                            <button class="icon-action-btn delete" onclick="deletePantryItem('${item.id}')" title="Delete Item">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function getCategoryEmoji(cat) {
+            switch(cat) {
+                case 'Dairy & Eggs': return '🧀';
+                case 'Meat & Seafood': return '🥩';
+                case 'Produce': return '🥬';
+                case 'Beverages': return '🥃';
+                case 'Snacks': return '🥨';
+                case 'Household': return '🧻';
+                default: return '🥫';
+            }
+        }
+
+        function adjustPantryQty(id, delta) {
+            const item = pantryItems.find(i => i.id === id);
+            if (!item) return;
+
+            item.qty = Math.max(0, item.qty + delta);
+            savePantryData();
+            renderPantryView();
+
+            if (item.qty === 0) {
+                showToast(`"${item.name}" is out of stock!`);
+            }
+        }
+
+        function deletePantryItem(id) {
+            pantryItems = pantryItems.filter(i => i.id !== id);
+            savePantryData();
+            renderPantryView();
+            showToast('Item deleted');
+        }
+
+        function flagLowAndAddToList(id) {
+            const item = pantryItems.find(i => i.id === id);
+            if (!item) return;
+
+            const result = VanFam.addToList({
+                name: item.name,
+                amount: 1,
+                unit: '',
+                source: 'Pantry Low',
+                sourceId: `pantry:${item.id}`,
+                upc: item.upc || ''
+            }, shoppingList);
+
+            if (result !== 'exists') {
+                saveShoppingData();
+                renderShoppingView();
+                showToast(`Added "${item.name}" to Shopping List`);
+            } else {
+                showToast(`"${item.name}" is already in your Shopping List`);
+            }
+        }
+
+        /**
+         * Shopping List Rendering & Actions
+         */
+        function renderShoppingView() {
+            const container = document.getElementById('shopping-items-container');
+            if (shoppingList.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding:36px 16px; background:var(--surface-dark); border:1px dashed var(--border-color); border-radius:12px;">
+                        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" style="margin:0 auto 10px auto;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                        <p style="margin:0 0 6px 0; color:#fff; font-size:14.5px; font-weight:600;">Shopping List is Empty</p>
+                        <p style="margin:0; color:var(--text-muted); font-size:12.5px;">Items added from the VanFam Cookbook or flagged low from Pantry will show up here.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            shoppingList.forEach((item, idx) => {
+                html += `
+                    <div class="shopping-item-row ${item.checked ? 'checked' : ''}" onclick="toggleShoppingItemCheck(${idx})">
+                        <input type="checkbox" ${item.checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleShoppingItemCheck(${idx})" style="width:18px; height:18px; accent-color:var(--accent-orange);">
+                        <div class="shopping-item-text">
+                            ${esc(VanFam.itemLabel(item))}
+                            ${item.source ? `<span class="source-tag">${esc(item.source)}</span>` : ''}
+                        </div>
+                        <button class="restock-btn" onclick="event.stopPropagation(); restockToPantry(${idx})">
+                            + Restock Pantry
+                        </button>
+                        <button onclick="event.stopPropagation(); removeShoppingItem(${idx})" style="background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; padding:2px 6px;">&times;</button>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function addCustomShoppingItem() {
+            const input = document.getElementById('custom-shopping-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            shoppingList.unshift({
+                id: VanFam.uid('s'),
+                name: text,
+                amount: null,
+                unit: '',
+                checked: false,
+                source: '',
+                sources: [],
+                upc: ''
+            });
+
+            input.value = '';
+            saveShoppingData();
+            renderShoppingView();
+            showToast('Item added to Shopping List');
+        }
+
+        function toggleShoppingItemCheck(index) {
+            if (shoppingList[index]) {
+                shoppingList[index].checked = !shoppingList[index].checked;
+                saveShoppingData();
+                renderShoppingView();
+            }
+        }
+
+        function restockToPantry(index) {
+            const item = shoppingList[index];
+            if (!item) return;
+
+            // Items are stored with the name separate from the amount, so no text cleanup is needed
+            const cleanName = item.name.replace(/\s*\(.*?\)\s*/g, ' ').trim() || item.name;
+            const lower = cleanName.toLowerCase();
+
+            // Match by barcode first, then exact name, then a partial name match
+            // ("Ground Bison" finds "Simple Truth Ground Bison")
+            const existingPantryItem =
+                (item.upc && pantryItems.find(p => p.upc === item.upc)) ||
+                pantryItems.find(p => p.name.toLowerCase() === lower) ||
+                (lower.split(/\s+/).length >= 2 && pantryItems.find(p => p.name.toLowerCase().includes(lower)));
+            // (one-word names like "Garlic" only match exactly, so they don't bump "Garlic Powder")
+
+            if (existingPantryItem) {
+                existingPantryItem.qty += 1;
+            } else {
+                pantryItems.push({
+                    id: VanFam.uid('p'),
+                    name: cleanName,
+                    brand: '',
+                    category: 'Pantry & Cans',
+                    qty: 1,
+                    upc: item.upc || '',
+                    img: '🥫'
+                });
+            }
+
+            // Remove from shopping list
+            shoppingList.splice(index, 1);
+            savePantryData();
+            saveShoppingData();
+            renderShoppingView();
+            renderPantryView();
+            showToast(`Restocked "${existingPantryItem ? existingPantryItem.name : cleanName}" into Pantry (+1)`);
+        }
+
+        function removeShoppingItem(index) {
+            if (shoppingList[index]) {
+                shoppingList.splice(index, 1);
+                saveShoppingData();
+                renderShoppingView();
+            }
+        }
+
+        function clearCompletedShoppingItems() {
+            shoppingList = shoppingList.filter(i => !i.checked);
+            saveShoppingData();
+            renderShoppingView();
+            showToast('Cleared checked items');
+        }
+
+        function clearAllShoppingItems() {
+            if (shoppingList.length === 0) return;
+            if (!confirm('Clear the whole shopping list?')) return;
+            shoppingList = [];
+            saveShoppingData();
+            renderShoppingView();
+            showToast('Shopping list cleared');
+        }
+
+        // On phones this opens the share sheet (Messages, Notes, Keep). Elsewhere it copies.
+        function shareShoppingList() {
+            const open = shoppingList.filter(i => !i.checked);
+            if (open.length === 0) {
+                showToast('Nothing left to buy');
+                return;
+            }
+            const text = `🛒 VanFam Shopping List\n\n` + open.map(i => `• ${VanFam.itemLabel(i)}`).join('\n');
+
+            if (navigator.share) {
+                navigator.share({ title: 'VanFam Shopping List', text }).catch(() => {});
+                return;
+            }
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text)
+                    .then(() => showToast('List copied to clipboard!'))
+                    .catch(() => copyWithTextarea(text));
+                return;
+            }
+            copyWithTextarea(text);
+        }
+
+        function copyWithTextarea(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('List copied to clipboard!');
+            } catch (err) {
+                showToast('Copy failed');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        /**
+         * UPC BARCODE CAMERA SCANNER SYSTEM
+         */
+        function openScannerModal() {
+            document.getElementById('scanner-modal').classList.add('active');
+            startCameraScanner();
+        }
+
+        function closeScannerModal() {
+            stopCameraScanner();
+            document.getElementById('scanner-modal').classList.remove('active');
         }
 
         function setScanMode(mode) {
             currentScanMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`mode-${mode.toLowerCase()}`).classList.add('active');
+            document.querySelectorAll('.scan-mode-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`btn-mode-${mode.toLowerCase()}`).classList.add('active');
+
+            const desc = document.getElementById('scan-mode-description');
+            if (mode === 'IN') {
+                desc.innerText = 'Scanning in IN mode: Increases item stock count in Pantry by +1.';
+            } else if (mode === 'OUT') {
+                desc.innerText = 'Scanning in OUT mode: Consumes item stock from Pantry (-1).';
+            } else if (mode === 'LOW') {
+                desc.innerText = 'Scanning in LOW mode: Flags item and adds directly to Shopping List.';
+            }
         }
 
-        function initScanner() {
-            html5QrCode = new Html5Qrcode("reader-container");
-        }
+        function startCameraScanner() {
+            if (html5QrCode) return;
 
-        function startScanner() {
-            document.getElementById('scanner-modal').style.display = 'flex';
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 250, height: 160 } };
+
             html5QrCode.start(
                 { facingMode: "environment" },
-                { fps: 10, qrbox: { width: 250, height: 150 } },
-                onScanSuccess
+                config,
+                onBarcodeDetected,
+                onScanError
             ).catch(err => {
-                alert("Camera permission denied or unavailable.");
-                stopScanner();
+                html5QrCode = null; // lets the next open try the camera again
+                document.getElementById('scanner-status').innerText = 'Camera access error. You can type code manually.';
             });
         }
 
-        function stopScanner() {
-            if (html5QrCode && html5QrCode.isScanning) {
+        function stopCameraScanner() {
+            if (html5QrCode) {
                 html5QrCode.stop().then(() => {
-                    document.getElementById('scanner-modal').style.display = 'none';
+                    html5QrCode.clear();
+                    html5QrCode = null;
+                }).catch(() => {
+                    html5QrCode = null;
                 });
+            }
+        }
+
+        function onScanError(errorMessage) {
+            // Silence repetitive scan frame warnings
+        }
+
+        function onBarcodeDetected(decodedText) {
+            if (scanCooldown) return;
+            scanCooldown = true;
+            playBeepSound();
+
+            document.getElementById('scanner-status').innerText = `Scanned UPC: ${decodedText}. Fetching info...`;
+
+            // Process Barcode
+            processUPCBarcode(decodedText);
+
+            setTimeout(() => {
+                scanCooldown = false;
+                document.getElementById('scanner-status').innerText = 'Point camera at product barcode...';
+            }, 2500);
+        }
+
+        function processUPCBarcode(barcode) {
+            // Check if item already exists in local Pantry Inventory first
+            const existing = pantryItems.find(p => p.upc === barcode);
+
+            if (existing) {
+                handleScanModeAction(existing, barcode);
             } else {
-                document.getElementById('scanner-modal').style.display = 'none';
+                // Fetch product metadata from Open Food Facts API
+                fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let name = 'Scanned Grocery Item';
+                        let brand = 'Unknown Brand';
+                        let imgUrl = '';
+                        let category = 'Pantry & Cans';
+
+                        if (data && data.status === 1 && data.product) {
+                            const p = data.product;
+                            name = p.product_name || p.product_name_en || name;
+                            brand = p.brands || brand;
+                            imgUrl = p.image_front_thumb_url || p.image_url || '';
+                        }
+
+                        const newItem = {
+                            id: VanFam.uid('p'),
+                            name: name,
+                            brand: brand,
+                            category: category,
+                            qty: 0,
+                            upc: barcode,
+                            imgUrl: imgUrl
+                        };
+
+                        pantryItems.push(newItem);
+                        handleScanModeAction(newItem, barcode);
+                    })
+                    .catch(() => {
+                        // Fallback manual prompt if offline or API fails
+                        const fallbackItem = {
+                            id: VanFam.uid('p'),
+                            name: `Product (${barcode})`,
+                            brand: 'Scanned Item',
+                            category: 'Pantry & Cans',
+                            qty: 0,
+                            upc: barcode
+                        };
+                        pantryItems.push(fallbackItem);
+                        handleScanModeAction(fallbackItem, barcode);
+                    });
             }
         }
 
-        function onScanSuccess(decodedText) {
-            stopScanner();
-            fetchProductFromUPC(decodedText);
-        }
-
-        function fetchProductFromUPC(upc) {
-            fetch(`https://world.openfoodfacts.org/api/v2/product/${upc}.json`)
-                .then(res => res.json())
-                .then(data => {
-                    let title = "Scanned Item";
-                    if (data.status === 1 && data.product) {
-                        title = data.product.product_name || data.product.brands || "Scanned Item";
-                    } else {
-                        title = prompt("Item not found in database. Enter name:", `Item (${upc})`) || `Item (${upc})`;
-                    }
-                    processScannedItem(upc, title);
-                })
-                .catch(() => {
-                    const title = prompt("Network error. Enter item name:", `Item (${upc})`) || `Item (${upc})`;
-                    processScannedItem(upc, title);
-                });
-        }
-
-        function processScannedItem(upc, name) {
+        function handleScanModeAction(item, barcode) {
             if (currentScanMode === 'IN') {
-                const existing = pantryItems.find(i => i.upc === upc || i.name === name);
-                if (existing) { existing.qty += 1; }
-                else { pantryItems.push({ upc, name, qty: 1 }); }
-                savePantry();
+                item.qty += 1;
+                savePantryData();
+                renderPantryView();
+                showToast(`[+ IN] Restocked: ${item.name} (Qty: ${item.qty})`);
             } else if (currentScanMode === 'OUT') {
-                const index = pantryItems.findIndex(i => i.upc === upc || i.name === name);
-                if (index !== -1) {
-                    pantryItems[index].qty -= 1;
-                    if (pantryItems[index].qty <= 0) pantryItems.splice(index, 1);
-                }
-                savePantry();
+                item.qty = Math.max(0, item.qty - 1);
+                savePantryData();
+                renderPantryView();
+                showToast(`[- OUT] Consumed: ${item.name} (Qty: ${item.qty})`);
             } else if (currentScanMode === 'LOW') {
-                const existing = shoppingList.find(i => i.name === name);
-                if (!existing) { shoppingList.push({ id: Date.now(), name: name, checked: false }); }
-                saveShopping();
-                switchTab('shopping');
+                savePantryData();
+                flagLowAndAddToList(item.id);
             }
         }
 
-        function addManualPantryItem() {
-            const input = document.getElementById('manual-pantry-input');
-            const val = input.value.trim();
-            if (!val) return;
-            const existing = pantryItems.find(i => i.name.toLowerCase() === val.toLowerCase());
-            if (existing) { existing.qty += 1; }
-            else { pantryItems.push({ upc: null, name: val, qty: 1 }); }
-            input.value = '';
-            savePantry();
-        }
-
-        function addManualShoppingItem() {
-            const input = document.getElementById('manual-shop-input');
-            const val = input.value.trim();
-            if (!val) return;
-            shoppingList.push({ id: Date.now(), name: val, checked: false });
-            input.value = '';
-            saveShopping();
-        }
-
-        function updatePantryQty(index, delta) {
-            pantryItems[index].qty += delta;
-            if (pantryItems[index].qty <= 0) pantryItems.splice(index, 1);
-            savePantry();
-        }
-
-        function toggleShoppingItem(index) {
-            shoppingList[index].checked = !shoppingList[index].checked;
-            saveShopping();
-        }
-
-        function removeShoppingItem(index) {
-            shoppingList.splice(index, 1);
-            saveShopping();
-        }
-
-        function clearShoppingList() {
-            if (confirm("Clear all items from your shopping list?")) {
-                shoppingList = [];
-                saveShopping();
+        function promptManualBarcode() {
+            const code = prompt('Enter 12-digit UPC Barcode Number:');
+            if (code) {
+                processUPCBarcode(code.trim());
             }
         }
 
-        function copyListForNotes() {
-            if (shoppingList.length === 0) return alert("Shopping list is empty!");
-            const text = "VANFAM GROCERY LIST:\n" + shoppingList.map(i => `${i.checked ? '[x]' : '[ ]'} ${i.name}`).join('\n');
-            navigator.clipboard.writeText(text).then(() => alert("Shopping list copied to clipboard!"));
+        /**
+         * Manual Add / Edit Modal
+         */
+        function openEditModal(id) {
+            const item = pantryItems.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('modal-form-title').innerText = 'Edit Pantry Item';
+            document.getElementById('form-edit-id').value = id;
+            document.getElementById('form-name').value = item.name || '';
+            document.getElementById('form-brand').value = item.brand || '';
+            document.getElementById('form-category').value = item.category || 'Pantry & Cans';
+            document.getElementById('form-qty').value = item.qty;
+            document.getElementById('form-upc').value = item.upc || '';
+            document.getElementById('manual-modal').classList.add('active');
         }
 
-        function savePantry() {
-            safeStorage.setItem('vanfam_pantry_items', JSON.stringify(pantryItems));
-            renderPantry();
+        function openManualAddModal() {
+            document.getElementById('modal-form-title').innerText = 'Add Pantry Item';
+            document.getElementById('form-edit-id').value = '';
+            document.getElementById('form-name').value = '';
+            document.getElementById('form-brand').value = '';
+            document.getElementById('form-qty').value = '1';
+            document.getElementById('form-upc').value = '';
+            document.getElementById('manual-modal').classList.add('active');
         }
 
-        function saveShopping() {
-            safeStorage.setItem('vanfam_master_shopping_list', JSON.stringify(shoppingList));
-            renderShoppingList();
+        function closeManualModal() {
+            document.getElementById('manual-modal').classList.remove('active');
         }
 
-        function renderPantry() {
-            const container = document.getElementById('pantry-list');
-            container.innerHTML = pantryItems.length === 0 
-                ? '<div class="empty-state">No items in pantry. Tap "Scan Barcode" or add manually above.</div>'
-                : pantryItems.map((item, idx) => `
-                    <div class="list-card">
-                        <div class="item-title">${item.name}</div>
-                        <div class="qty-controls">
-                            <button class="qty-btn" onclick="updatePantryQty(${idx}, -1)">-</button>
-                            <span class="qty-count">${item.qty}</span>
-                            <button class="qty-btn" onclick="updatePantryQty(${idx}, 1)">+</button>
-                        </div>
-                    </div>
-                `).join('');
+        function saveManualItem() {
+            const name = document.getElementById('form-name').value.trim();
+            if (!name) {
+                showToast('Please enter a product name');
+                return;
+            }
+
+            const brand = document.getElementById('form-brand').value.trim();
+            const category = document.getElementById('form-category').value;
+            const qtyRaw = parseInt(document.getElementById('form-qty').value, 10);
+            const qty = isNaN(qtyRaw) ? 1 : Math.max(0, qtyRaw);
+            const upc = document.getElementById('form-upc').value.trim();
+            const editId = document.getElementById('form-edit-id').value;
+
+            if (editId) {
+                const item = pantryItems.find(i => i.id === editId);
+                if (item) {
+                    const categoryChanged = item.category !== category;
+                    Object.assign(item, { name, brand, category, qty, upc });
+                    if (categoryChanged && !item.imgUrl) item.img = getCategoryEmoji(category);
+                }
+                savePantryData();
+                renderPantryView();
+                closeManualModal();
+                showToast(`Updated "${name}"`);
+                return;
+            }
+
+            pantryItems.push({
+                id: VanFam.uid('p'),
+                name: name,
+                brand: brand,
+                category: category,
+                qty: qty,
+                upc: upc,
+                img: getCategoryEmoji(category)
+            });
+
+            savePantryData();
+            renderPantryView();
+            closeManualModal();
+            showToast(`Added "${name}" to Pantry`);
         }
 
-        function renderShoppingList() {
-            const container = document.getElementById('shopping-list-items');
-            container.innerHTML = shoppingList.length === 0
-                ? '<div class="empty-state">Shopping list is clear!</div>'
-                : shoppingList.map((item, idx) => `
-                    <div class="list-card">
-                        <div class="shop-item-left" onclick="toggleShoppingItem(${idx})">
-                            <input type="checkbox" ${item.checked ? 'checked' : ''}>
-                            <span class="item-title ${item.checked ? 'checked' : ''}">${item.name}</span>
-                        </div>
-                        <button class="delete-btn" onclick="removeShoppingItem(${idx})">✕</button>
-                    </div>
-                `).join('');
+        /**
+         * Audio Feedback & Toast Notifications
+         */
+        function playBeepSound() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.value = 880; // A5 tone
+
+                gain.gain.setValueAtTime(0.2, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.15);
+            } catch (e) {}
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2400);
         }
     </script>
 </body>

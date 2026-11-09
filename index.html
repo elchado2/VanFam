@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VanFam Hub</title>
+    <script src="shared.js"></script>
     <style>
         :root {
             --bg-dark: #0a0a0a;
@@ -191,7 +192,7 @@
             <div>
                 <div class="card-icon">🛒</div>
                 <div class="card-title">Shopping List</div>
-                <div class="card-desc">Combined grocery list automatically synced from your cookbook recipes and low stock barcode scans.</div>
+                <div class="card-desc">One grocery list that collects items from your cookbook recipes, pantry low-stock flags, and anything you add by hand.</div>
             </div>
             <div class="card-footer">
                 <span>View Shopping List &rarr;</span>
@@ -203,25 +204,21 @@
 
     <div class="featured-section">
         <div class="featured-title">Quick Recipe Shortcut</div>
-        <a href="cookbook.html" class="quick-link">
+        <a href="cookbook.html?recipe=chili" class="quick-link">
             <div>🔥 Laphroaig Bison Chili</div>
             <span>Ninja Slow Cooker • Stew</span>
         </a>
     </div>
 
     <script>
-        // Reads shared localStorage to update list counter badge on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const storedList = JSON.parse(localStorage.getItem('vanfam_master_shopping_list') || '[]');
-                const badge = document.getElementById('list-count-badge');
-                if (badge) {
-                    badge.innerText = `${storedList.length} item${storedList.length === 1 ? '' : 's'}`;
-                }
-            } catch (e) {
-                console.warn('Unable to access localStorage count badge:', e);
-            }
-        });
+        // Shows how many items are still left to buy on the shared shopping list
+        function updateListBadge() {
+            const n = VanFam.countOpen();
+            const badge = document.getElementById('list-count-badge');
+            if (badge) badge.innerText = `${n} item${n === 1 ? '' : 's'}`;
+        }
+        document.addEventListener('DOMContentLoaded', updateListBadge);
+        VanFam.onDataChange(updateListBadge);
     </script>
 </body>
 </html>
