@@ -40,7 +40,10 @@ function cleanSize(s) {
     return String(s).replace(/\s*\(.*?\)\s*/g, ' ').trim();
 }
 
-async function getJSON(url, ms = 6000) {
+// Records what each database answered, for ?debug=1
+const trace = {};
+
+async function getJSON(label, url, ms = 6000) {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), ms);
     try {
@@ -48,9 +51,14 @@ async function getJSON(url, ms = 6000) {
             signal: ctrl.signal,
             headers: { 'User-Agent': 'VanFamPantry/1.0 (family pantry app)', 'Accept': 'application/json' }
         });
-        if (!res.ok) return null;
+        trace[label] = `HTTP ${res.status}`;
+        if (!res.ok) {
+            trace[label] += ': ' + (await res.text()).slice(0, 200);
+            return null;
+        }
         return await res.json();
     } catch (e) {
+        trace[label] = 'error: ' + (e.name === 'AbortError' ? 'timed out' : e.message);
         return null;
     } finally {
         clearTimeout(timer);
@@ -58,22 +66,31 @@ async function getJSON(url, ms = 6000) {
 }
 
 export default async (req) => {
-    const code = (new URL(req.url).searchParams.get('code') || '').replace(/\D/g, '');
+    const params = new URL(req.url).searchParams;
+    const code = (params.get('code') || '').replace(/\D/g, '');
+    const debug = params.get('debug') === '1';
+    Object.keys(trace).forEach(k => delete trace[k]); // fresh trace for each request
     if (code.length < 8 || code.length > 14) {
         return Response.json({ found: false, error: 'Barcode should be 8 to 14 digits' }, { status: 400 });
     }
 
     const offFields = 'product_name,product_name_en,generic_name,brands,quantity,image_front_url,image_url,categories_tags';
     const [upcdb, off] = await Promise.all([
-        getJSON(`https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`),
-        getJSON(`https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${offFields}`)
+        getJSON('upcitemdb', `https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`),
+        getJSON('openfoodfacts', `https://world.openfoodfacts.org/api/v2/product/${code}.json?fields=${offFields}`)
     ]);
 
     const u = upcdb && Array.isArray(upcdb.items) && upcdb.items[0] ? upcdb.items[0] : null;
     const o = off && off.status === 1 && off.product ? off.product : null;
 
+    if (debug) {
+        trace.upcitemdb_items = upcdb && Array.isArray(upcdb.items) ? upcdb.items.length : null;
+        trace.openfoodfacts_status = off ? off.status : null;
+    }
+
     if (!u && !o) {
-        return Response.json({ found: false, upc: code }, { headers: { 'Cache-Control': 'public, max-age=3600' } });
+        return Response.json({ found: false, upc: code, ...(debug ? { debug: trace } : {}) },
+            { headers: { 'Cache-Control': debug ? 'no-store' : 'public, max-age=3600' } });
     }
 
     const brand = (u && u.brand) || (o && o.brands ? o.brands.split(',')[0].trim() : '');
@@ -108,8 +125,9 @@ export default async (req) => {
         brand,
         size,
         category: guessCategory(categoryText),
-        images: [...new Set(images)].slice(0, 5)
-    }, { headers: { 'Cache-Control': 'public, max-age=86400' } });
+        images: [...new Set(images)].slice(0, 5),
+        ...(debug ? { debug: trace } : {})
+    }, { headers: { 'Cache-Control': debug ? 'no-store' : 'public, max-age=86400' } });
 };
 
 export const config = { path: '/api/upc' };
