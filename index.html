@@ -12,6 +12,8 @@
             --surface-card: #1c1c1e;
             --accent-orange: #ff5722;
             --accent-gold: #ffb703;
+            --accent-green: #30d158;
+            --accent-red: #ff453a;
             --text-main: #f2f2f7;
             --text-muted: #8e8e93;
             --border-color: #2c2c2e;
@@ -21,6 +23,7 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -28,12 +31,14 @@
             background-color: var(--bg-dark);
             color: var(--text-main);
             min-height: 100vh;
-            padding: 20px 16px;
+            padding: 20px 16px 40px;
         }
+
+        .wrap { max-width: 900px; margin: 0 auto; }
 
         .hub-header {
             text-align: center;
-            margin: 24px 0 32px 0;
+            margin: 20px 0 24px 0;
         }
 
         .hub-header h1 {
@@ -50,27 +55,76 @@
             font-weight: 600;
         }
 
+        /* Quick scan buttons: each opens the pantry camera in that mode */
+        .quick-scan {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .scan-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 16px 8px;
+            border-radius: 14px;
+            text-decoration: none;
+            background-color: var(--surface-card);
+            border: 1px solid var(--border-color);
+            transition: transform 0.15s, background-color 0.15s;
+        }
+
+        .scan-btn:active { transform: scale(0.97); }
+
+        .scan-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 800;
+        }
+
+        .scan-label {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .scan-sub {
+            font-size: 11.5px;
+            color: var(--text-muted);
+        }
+
+        .scan-in .scan-icon { background: var(--accent-green); color: #000; }
+        .scan-out .scan-icon { background: var(--accent-red); color: #fff; }
+        .scan-low .scan-icon { background: var(--accent-orange); color: #fff; }
+        .scan-in:hover { border-color: var(--accent-green); }
+        .scan-out:hover { border-color: var(--accent-red); }
+        .scan-low:hover { border-color: var(--accent-orange); }
+
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 16px;
-            max-width: 900px;
-            margin: 0 auto;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 12px;
         }
 
         .nav-card {
             background-color: var(--surface-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            padding: 24px;
+            padding: 18px 20px;
             text-decoration: none;
             color: inherit;
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
             transition: transform 0.2s, border-color 0.2s, background-color 0.2s;
-            position: relative;
-            overflow: hidden;
         }
 
         .nav-card:hover, .nav-card:active {
@@ -80,31 +134,30 @@
         }
 
         .card-icon {
-            font-size: 36px;
-            margin-bottom: 16px;
+            font-size: 34px;
+            flex-shrink: 0;
+        }
+
+        .card-body { flex: 1; min-width: 0; }
+
+        .card-title-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            margin-bottom: 4px;
         }
 
         .card-title {
             font-size: 20px;
             font-weight: 700;
             color: #ffffff;
-            margin-bottom: 8px;
         }
 
         .card-desc {
             font-size: 13px;
             color: var(--text-muted);
-            line-height: 1.5;
-            margin-bottom: 20px;
-        }
-
-        .card-footer {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 13px;
-            font-weight: 700;
-            color: var(--accent-gold);
+            line-height: 1.45;
         }
 
         .badge {
@@ -114,100 +167,67 @@
             font-weight: 800;
             padding: 4px 10px;
             border-radius: 12px;
-        }
-
-        .featured-section {
-            max-width: 900px;
-            margin: 36px auto 0 auto;
-            background-color: var(--surface-dark);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 20px;
-        }
-
-        .featured-title {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-            font-weight: 700;
-        }
-
-        .quick-link {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px;
-            background-color: var(--surface-card);
-            border-radius: 8px;
-            text-decoration: none;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 600;
-            border: 1px solid var(--border-color);
-        }
-
-        .quick-link span {
-            color: var(--accent-gold);
-            font-size: 12px;
+            white-space: nowrap;
         }
     </style>
 </head>
 <body>
+    <div class="wrap">
 
-    <div class="hub-header">
-        <h1>VanFam Family Hub</h1>
-        <p>Kitchen & Household Management</p>
-    </div>
+        <div class="hub-header">
+            <h1>VanFam Family Hub</h1>
+            <p>Kitchen & Household Management</p>
+        </div>
 
-    <div class="grid-container">
-        
-        <!-- COOKBOOK CARD -->
-        <a href="cookbook.html" class="nav-card">
-            <div>
+        <!-- QUICK SCAN: opens the pantry scanner already set to the right mode -->
+        <div class="quick-scan">
+            <a href="pantry.html?scan=in" class="scan-btn scan-in">
+                <div class="scan-icon">+</div>
+                <div class="scan-label">Scan In</div>
+                <div class="scan-sub">Add to pantry</div>
+            </a>
+            <a href="pantry.html?scan=out" class="scan-btn scan-out">
+                <div class="scan-icon">&minus;</div>
+                <div class="scan-label">Scan Out</div>
+                <div class="scan-sub">Used it up</div>
+            </a>
+            <a href="pantry.html?scan=low" class="scan-btn scan-low">
+                <div class="scan-icon">!</div>
+                <div class="scan-label">Running Low</div>
+                <div class="scan-sub">Add to list</div>
+            </a>
+        </div>
+
+        <div class="grid-container">
+
+            <a href="cookbook.html" class="nav-card">
                 <div class="card-icon">📖</div>
-                <div class="card-title">Cookbook</div>
-                <div class="card-desc">Browse master recipes, adjust portion sizes, step-by-step cooking checklists, and kitchen timers.</div>
-            </div>
-            <div class="card-footer">
-                <span>Open Cookbook &rarr;</span>
-            </div>
-        </a>
+                <div class="card-body">
+                    <div class="card-title-row"><div class="card-title">Cookbook</div></div>
+                    <div class="card-desc">Family recipes, portion scaling, cooking checklists, and kitchen timers.</div>
+                </div>
+            </a>
 
-        <!-- PANTRY INVENTORY CARD -->
-        <a href="pantry.html" class="nav-card">
-            <div>
+            <a href="pantry.html" class="nav-card">
                 <div class="card-icon">📦</div>
-                <div class="card-title">Pantry Inventory</div>
-                <div class="card-desc">Scan barcodes (IN/OUT/LOW) with your camera, check item counts, and track household stock.</div>
-            </div>
-            <div class="card-footer">
-                <span>Manage Pantry &rarr;</span>
-            </div>
-        </a>
+                <div class="card-body">
+                    <div class="card-title-row"><div class="card-title">Pantry</div></div>
+                    <div class="card-desc">See what's on hand and keep item counts up to date.</div>
+                </div>
+            </a>
 
-        <!-- SHOPPING LIST CARD -->
-        <a href="pantry.html?tab=shopping" class="nav-card">
-            <div>
+            <a href="pantry.html?tab=shopping" class="nav-card">
                 <div class="card-icon">🛒</div>
-                <div class="card-title">Shopping List</div>
-                <div class="card-desc">One grocery list that collects items from your cookbook recipes, pantry low-stock flags, and anything you add by hand.</div>
-            </div>
-            <div class="card-footer">
-                <span>View Shopping List &rarr;</span>
-                <span class="badge" id="list-count-badge">0 items</span>
-            </div>
-        </a>
+                <div class="card-body">
+                    <div class="card-title-row">
+                        <div class="card-title">Shopping List</div>
+                        <span class="badge" id="list-count-badge">0 items</span>
+                    </div>
+                    <div class="card-desc">Items from recipes, low-stock scans, and anything you add by hand.</div>
+                </div>
+            </a>
 
-    </div>
-
-    <div class="featured-section">
-        <div class="featured-title">Quick Recipe Shortcut</div>
-        <a href="cookbook.html?recipe=chili" class="quick-link">
-            <div>🔥 Laphroaig Bison Chili</div>
-            <span>Ninja Slow Cooker • Stew</span>
-        </a>
+        </div>
     </div>
 
     <script>

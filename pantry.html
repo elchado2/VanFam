@@ -1026,8 +1026,17 @@
             updateBadges();
 
             // pantry.html?tab=shopping opens straight to the list (used by the hub and cookbook)
-            const tab = new URLSearchParams(location.search).get('tab');
-            if (tab === 'shopping') switchTab('shopping');
+            const params = new URLSearchParams(location.search);
+            if (params.get('tab') === 'shopping') switchTab('shopping');
+
+            // pantry.html?scan=in|out|low opens the camera in that mode (used by the hub's quick scan buttons)
+            const scan = (params.get('scan') || '').toUpperCase();
+            if (['IN', 'OUT', 'LOW'].includes(scan)) {
+                // Clear the ?scan so a refresh or the back button doesn't reopen the camera
+                try { history.replaceState(null, '', location.pathname); } catch (e) {}
+                setScanMode(scan);
+                openScannerModal();
+            }
 
             // Pick up changes made on the cookbook page
             VanFam.onDataChange(() => {
@@ -1425,6 +1434,10 @@
 
         function startCameraScanner() {
             if (html5QrCode) return;
+            if (typeof Html5Qrcode === 'undefined') {
+                document.getElementById('scanner-status').innerText = 'Scanner did not load. Check your connection, or type the code manually.';
+                return;
+            }
 
             html5QrCode = new Html5Qrcode("reader");
             const config = { fps: 10, qrbox: { width: 250, height: 160 } };
